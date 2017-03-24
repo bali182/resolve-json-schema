@@ -1,0 +1,30 @@
+{
+  "name": "resolve-json-schema",
+  "version": "0.0.0",
+  "description": "Convenient json schema resolution",
+  "main": "bin/index.js",
+  "scripts": {
+    "build": "rollup -c rollup.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bali182/resolve-json-schema.git"
+  },
+  "author": "Balazs Edes",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bali182/resolve-json-schema/issues"
+  },
+  "homepage": "https://github.com/bali182/resolve-json-schema#readme",
+  "devDependencies": {
+    "babel": "^6.23.0",
+    "babel-preset-es2015": "^6.24.0",
+    "rollup": "^0.41.6",
+    "rollup-plugin-babel": "^2.7.1"
+  },
+  "dependencies": {
+    "axios": "^0.15.3",
+    "lodash": "^4.17.4",
+    "uri-js": "^2.1.1"
+  }
+}
