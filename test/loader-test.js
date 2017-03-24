@@ -1,4 +1,4 @@
-import { loadFileSchema, loadHttpSchema, loadAnySchema, loadSchema } from '../loader'
+import { loadFileSchema, loadHttpSchema, loadAnySchema, loadSchema } from '../src/loader'
 
 describe('loader', () => {
   it('should pass', () => {

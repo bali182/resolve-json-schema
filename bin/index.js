@@ -41,7 +41,7 @@ var loadHttpSchema = function loadHttpSchema(uri) {
   });
 };
 
-var anySchemaLoader = function anySchemaLoader(uri) {
+var loadAnySchema = function loadAnySchema(uri) {
   switch (uri.scheme) {
     case 'file':
       return loadFileSchema(uri);
@@ -53,7 +53,7 @@ var anySchemaLoader = function anySchemaLoader(uri) {
 };
 
 var loadSchema = memoize(function (uri) {
-  return anySchemaLoader(uriJs.parse(uri));
+  return loadAnySchema(uriJs.parse(uri));
 });
 
 var ANY_TYPE = 'any';
