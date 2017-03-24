@@ -26,7 +26,7 @@ export const loadHttpSchema = uri => {
   return axios.get(url).then(response => response.data)
 }
 
-export const anySchemaLoader = uri => {
+export const loadAnySchema = uri => {
   switch (uri.scheme) {
     case 'file': return loadFileSchema(uri)
     case 'http': return loadHttpSchema(uri)
@@ -34,4 +34,4 @@ export const anySchemaLoader = uri => {
   }
 }
 
-export const loadSchema = memoize(uri => anySchemaLoader(uriJs.parse(uri)))
+export const loadSchema = memoize(uri => loadAnySchema(uriJs.parse(uri)))
