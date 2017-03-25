@@ -5,9 +5,9 @@ import assign from 'lodash/assign'
 import clone from 'lodash/clone'
 import isArray from 'lodash/isArray'
 import values from 'lodash/values'
+import createVisitor from 'json-schema-visitor'
 
 import { loadSchema } from './loader'
-import { schemaType, ALL_OF_TYPE, ANY_OF_TYPE, ONE_OF_TYPE, OBJECT_TYPE, ARRAY_TYPE } from './types'
 
 const updateSchema = node => schema => {
   // mutation, not pretty
@@ -47,6 +47,14 @@ const resolveDocument = (root, node) => {
     .then(() => node.$ref ? resolveDocument(root, node) : null)
 }
 
+const findChildNodesVisitor = createVisitor({
+  allOf: node => node.allOf,
+  anyOf: node => node.anyOf,
+  oneOf: node => node.oneOf,
+  array: ({ items }) => [items || {}],
+  object: ({ properties }) => values(properties || {}),
+}, () => [])
+
 const findChildNodes = node => {
   // mutation, not pretty but has to be done somewhere
   if (isArray(node.type)) {
@@ -54,19 +62,11 @@ const findChildNodes = node => {
     delete node['type']
     node.oneOf = childSchemas
   }
-
-  switch (schemaType(node)) {
-    case ALL_OF_TYPE: return node.allOf
-    case ANY_OF_TYPE: return node.anyOf
-    case ONE_OF_TYPE: return node.oneOf
-    case OBJECT_TYPE: return values(node.properties || {})
-    case ARRAY_TYPE: return [node.items || {}]
-    default: return []
-  }
+  return findChildNodesVisitor(node)
 }
 
 const traverseResolve = (root, node) => {
-  const resolvedNode = (node.$ref ? resolveDocument(root, node) : Promise.resolve())
+  const resolvedNode = node.$ref ? resolveDocument(root, node) : Promise.resolve()
   return resolvedNode.then(() => {
     const childNodes = findChildNodes(node)
     const childResolvePromises = childNodes.map(childNode => traverseResolve(root, childNode))

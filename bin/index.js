@@ -9,18 +9,18 @@ var assign = _interopDefault(require('lodash/assign'));
 var clone = _interopDefault(require('lodash/clone'));
 var isArray = _interopDefault(require('lodash/isArray'));
 var values = _interopDefault(require('lodash/values'));
-var fs = _interopDefault(require('fs'));
-var os = _interopDefault(require('os'));
+var createVisitor = _interopDefault(require('json-schema-visitor'));
+var fs = require('fs');
+var os = require('os');
 var axios = _interopDefault(require('axios'));
 var trimStart = _interopDefault(require('lodash/trimStart'));
-var memoize = _interopDefault(require('lodash/memoize'));
+var lodash_memoize = _interopDefault(require('lodash/memoize'));
 var omit = _interopDefault(require('lodash/omit'));
 var isObject = _interopDefault(require('lodash/isObject'));
 
-var loadFileSchema = function loadFileSchema(uri) {
+var readJson = function readJson(path) {
   return new Promise(function (resolve, reject) {
-    var path = os.platform() === 'win32' ? trimStart(uri.path, '/') : uri.path;
-    fs.readFile(path, 'UTF-8', /* TODO think about detecting this */function (error, data) {
+    fs.readFile(path, 'UTF-8', function (error, data) {
       if (error) {
         reject(error);
       } else {
@@ -34,6 +34,10 @@ var loadFileSchema = function loadFileSchema(uri) {
   });
 };
 
+var loadFileSchema = function loadFileSchema(uri) {
+  return readJson(os.platform() === 'win32' ? trimStart(uri.path, '/') : uri.path);
+};
+
 var loadHttpSchema = function loadHttpSchema(uri) {
   var url = uriJs.serialize(omit(uri, ['fragment']));
   return axios.get(url).then(function (response) {
@@ -41,72 +45,16 @@ var loadHttpSchema = function loadHttpSchema(uri) {
   });
 };
 
-var loadAnySchema = function loadAnySchema(uri) {
+var loadSchema = function loadSchema(input) {
+  var uri = isObject(input) ? input : uriJs.parse(input);
   switch (uri.scheme) {
     case 'file':
       return loadFileSchema(uri);
     case 'http':
       return loadHttpSchema(uri);
     default:
-      throw new Error('Unknown URI format ' + JSON.stringify(uri));
+      return Promise.reject(new Error('Unknown URI format ' + JSON.stringify(uri)));
   }
-};
-
-var loadSchema = memoize(function (uri) {
-  return loadAnySchema(uriJs.parse(uri));
-});
-
-var ANY_TYPE = 'any';
-var OBJECT_TYPE = 'object';
-var ARRAY_TYPE = 'array';
-var ONE_OF_TYPE = 'oneOf';
-var ANY_OF_TYPE = 'anyOf';
-var ALL_OF_TYPE = 'allOf';
-var ENUM_TYPE = 'enum';
-var BOOLEAN_TYPE = 'boolean';
-var NUMBER_TYPE = 'number';
-var STRING_TYPE = 'string';
-var NULL_TYPE = 'null';
-
-var schemaType = function schemaType(schema) {
-  if (isNil(schema)) {
-    return ANY_TYPE;
-  }
-
-  if (!schema.allOf && !schema.anyOf && !schema.oneOf) {
-    if (schema.type === 'object' || isObject(schema.properties) && !schema.type) {
-      return OBJECT_TYPE;
-    } else if (schema.type === 'array' || isObject(schema.items) && !schema.type) {
-      return ARRAY_TYPE;
-    }
-  }
-
-  if (isArray(schema.oneOf)) {
-    return ONE_OF_TYPE;
-  } else if (isArray(schema.anyOf)) {
-    return ANY_OF_TYPE;
-  } else if (isArray(schema.allOf)) {
-    return ALL_OF_TYPE;
-  } else if (isObject(schema.enum)) {
-    return ENUM_TYPE;
-  }
-
-  switch (schema.type) {
-    case 'boolean':
-      return BOOLEAN_TYPE;
-    case 'number':
-      return NUMBER_TYPE;
-    case 'integer':
-      return NUMBER_TYPE;
-    case 'string':
-      return STRING_TYPE;
-    case 'null':
-      return NULL_TYPE;
-    default:
-      break;
-  }
-
-  return ANY_TYPE;
 };
 
 function _toArray(arr) { return Array.isArray(arr) ? arr : Array.from(arr); }
@@ -157,6 +105,28 @@ var resolveDocument = function resolveDocument(root, node) {
   });
 };
 
+var findChildNodesVisitor = createVisitor({
+  allOf: function allOf(node) {
+    return node.allOf;
+  },
+  anyOf: function anyOf(node) {
+    return node.anyOf;
+  },
+  oneOf: function oneOf(node) {
+    return node.oneOf;
+  },
+  array: function array(_ref) {
+    var items = _ref.items;
+    return [items || {}];
+  },
+  object: function object(_ref2) {
+    var properties = _ref2.properties;
+    return values(properties || {});
+  }
+}, function () {
+  return [];
+});
+
 var findChildNodes = function findChildNodes(node) {
   // mutation, not pretty but has to be done somewhere
   if (isArray(node.type)) {
@@ -166,21 +136,7 @@ var findChildNodes = function findChildNodes(node) {
     delete node['type'];
     node.oneOf = childSchemas;
   }
-
-  switch (schemaType(node)) {
-    case ALL_OF_TYPE:
-      return node.allOf;
-    case ANY_OF_TYPE:
-      return node.anyOf;
-    case ONE_OF_TYPE:
-      return node.oneOf;
-    case OBJECT_TYPE:
-      return values(node.properties || {});
-    case ARRAY_TYPE:
-      return [node.items || {}];
-    default:
-      return [];
-  }
+  return findChildNodesVisitor(node);
 };
 
 var traverseResolve = function traverseResolve(root, node) {
