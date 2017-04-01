@@ -9,6 +9,53 @@ import createVisitor from 'json-schema-visitor'
 
 import { loadSchema } from './loader'
 
+const findChildNodesVisitor = createVisitor({
+  allOf: node => node.allOf,
+  anyOf: node => node.anyOf,
+  oneOf: node => node.oneOf,
+  array: ({ items }) => [items || {}],
+  object: ({ properties }) => values(properties || {}),
+}, () => [])
+
+const addToIds = (schema, ids) => {
+  if (schema && schema.id) {
+    ids[schema.id] = schema
+  }
+  return ids
+}
+
+const collectIdsVisitor = createVisitor({
+  allOf(schema, ids) {
+    (schema.allOf || []).forEach(childSchema => collectIdsVisitor(childSchema, ids))
+    return ids
+  },
+  anyOf(schema, ids) {
+    (schema.anyOf || []).forEach(childSchema => collectIdsVisitor(childSchema, ids))
+    return ids
+  },
+  oneOf(schema, ids) {
+    (schema.oneOf || []).forEach(childSchema => collectIdsVisitor(childSchema, ids))
+    return ids
+  },
+  object(schema, ids) {
+    values(schema.properties || {}).forEach(childSchema => collectIdsVisitor(childSchema, ids))
+    return addToIds(schema, ids)
+  },
+  array(schema, ids) {
+    collectIdsVisitor(schema.items || {}, ids)
+    return addToIds(schema, ids)
+  }
+}, addToIds)
+
+// TODO in progress
+/* 
+const allIds = schemas => {
+  const ids = {}
+  schemas.forEach(schema => collectIdsVisitor(schema, ids))
+  return ids
+}
+*/
+
 const updateSchema = node => schema => {
   // mutation, not pretty
   delete node['$ref']
@@ -47,14 +94,6 @@ const resolveDocument = (root, node) => {
     .then(() => node.$ref ? resolveDocument(root, node) : null)
 }
 
-const findChildNodesVisitor = createVisitor({
-  allOf: node => node.allOf,
-  anyOf: node => node.anyOf,
-  oneOf: node => node.oneOf,
-  array: ({ items }) => [items || {}],
-  object: ({ properties }) => values(properties || {}),
-}, () => [])
-
 const findChildNodes = node => {
   // mutation, not pretty but has to be done somewhere
   if (isArray(node.type)) {
@@ -76,3 +115,13 @@ const traverseResolve = (root, node) => {
 
 export const resolve = uri => loadSchema(uri)
   .then(root => traverseResolve(root, root).then(() => root))
+
+// TODO in progress
+/*
+const resolve2 = ({uri, dependencies = [], loader = loadSchema} = {}) => {
+  Promise.all([uri, ...dependencies].map(loader)).then(schemas => {
+    const [rootSchema, ...subSchemas] = schemas
+    const ids = allIds(schemas)
+  })
+}
+*/

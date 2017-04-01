@@ -1,0 +1,43 @@
+{
+  "description": "A simple person schema with a few properties and ids",
+  "$ref": "#/definitions/person",
+  "definitions": {
+    "address": {
+      "id": "person.address",
+      "type": "object",
+      "properties": {
+        "country": { "type": "string" },
+        "zip": { "type": "number" },
+        "state": { "type": "string" },
+        "city": { "type": "string" },
+        "street": { "type": "string" }
+      }
+    },
+    "name": {
+      "id": "person.name",
+      "type": "object",
+      "properties": {
+        "first": { "type": "string" },
+        "last": { "type": "string" }
+      }
+    },
+    "date": {
+      "id": "person.date",
+      "type": "object",
+      "properties": {
+        "year": { "type": "number" },
+        "month": { "type": "number" },
+        "day": { "type": "number" }
+      }
+    },
+    "person": {
+      "id": "person.person",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/definitions/name" },
+        "dateOfBirth": { "$ref": "#/definitions/date" },
+        "address": { "$ref": "#/definitions/address" }
+      }
+    }
+  }
+}

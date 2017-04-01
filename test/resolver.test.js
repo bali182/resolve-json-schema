@@ -4,6 +4,17 @@ import { schemaPath } from './utils'
 const keys = object => Object.keys(object).sort()
 
 describe('resolver', () => {
+
+  const timeout = jasmine.DEFAULT_TIMEOUT_INTERVAL
+
+  beforeAll(() => {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000
+  })
+
+  afterAll(() => {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = timeout
+  })
+
   it('should properly resolve the person schema', () => resolve(schemaPath('person')).then(schema => {
     const { type, description, definitions, properties } = schema
 
